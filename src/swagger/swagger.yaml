@@ -1,0 +1,244 @@
+openapi: 3.0.0
+info:
+  title: My API
+  version: "1.0.0"
+  description: |
+    This API has two main sections:
+
+    **Auth API**: For registering apps, retrieving API keys, and revoking keys.  
+    **Analytics API**: For collecting events and retrieving analytics data.
+
+servers:
+  - url: http://localhost:3000/api
+
+paths:
+
+  ########################################
+  # Auth API
+
+  /auth/register:
+    post:
+      summary: Register a new app
+      description: Register a website or app with name and owner email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - ownerEmail
+              properties:
+                name:
+                  type: string
+                  example: "MyApp"
+                ownerEmail:
+                  type: string
+                  example: "owner@example.com"
+      responses:
+        '200':
+          description: Website/app added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Website/app added successfully"
+                  response:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "uuid-v4"
+                      name:
+                        type: string
+                        example: "MyApp"
+                      ownerEmail:
+                        type: string
+                        example: "owner@example.com"
+                      apiKey:
+                        type: string
+                        example: "uuid-v4"
+                      status:
+                        type: string
+                        example: "active"
+        '400':
+          description: Missing 'name' or 'ownerEmail'
+        '409':
+          description: App already registered
+
+  /auth/api-key:
+    post:
+      summary: Retrieve API key
+      description: Get API key for an app by owner email
+      parameters:
+        - in: query
+          name: ownerEmail
+          schema:
+            type: string
+          required: true
+          description: Owner email of the app
+      responses:
+        '200':
+          description: API key retrieved successfully
+        '400':
+          description: Missing or invalid ownerEmail
+        '404':
+          description: App not found
+
+  /auth/revoke:
+    post:
+      summary: Revoke an API key
+      description: Deactivate an app's API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - apiKey
+              properties:
+                apiKey:
+                  type: string
+                  example: "uuid-v4"
+      responses:
+        '200':
+          description: API key revoked successfully
+        '400':
+          description: Missing apiKey
+        '404':
+          description: App not found
+
+  ########################################
+  # Analytics API
+ 
+  /analytics/collect:
+    post:
+      summary: Collect an event
+      description: Collect an event from a user or app. API key required in header.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  description: Optional user identifier
+                  example: "user-123"
+                event:
+                  type: string
+                  description: Name of the event
+                  example: "login_form_cta_click"
+                url:
+                  type: string
+                  description: Page URL where the event occurred
+                  example: "https://example.com/page"
+                referrer:
+                  type: string
+                  description: Referrer URL
+                  example: "https://google.com"
+                device:
+                  type: string
+                  description: Device type
+                  example: "mobile"
+                ipAddress:
+                  type: string
+                  description: IP address of the user
+                  example: "192.168.1.1"
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: Event timestamp
+                  example: "2024-02-20T12:34:56Z"
+                metadata:
+                  type: object
+                  description: Additional event metadata (e.g., browser, OS, screen size)
+                  example:
+                    browser: "Chrome"
+                    os: "Android"
+                    screenSize: "1080x1920"
+      responses:
+        '201':
+          description: Event collected successfully
+        '401':
+          description: API key missing
+        '403':
+          description: Invalid API key
+        '500':
+          description: Internal server error
+
+
+  /analytics/event-summary:
+    get:
+      summary: Get event summary
+      description: Get aggregated summary of events for an app
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: event
+          schema:
+            type: string
+          description: Filter by event type
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Start date filter
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: End date filter
+        - in: query
+          name: appId
+          schema:
+            type: string
+          description: Filter by appId
+      responses:
+        '200':
+          description: Event summary retrieved
+        '401':
+          description: API key missing
+        '403':
+          description: Invalid API key
+
+  /analytics/user-stats:
+    get:
+      summary: Get stats for a user
+      description: Retrieve analytics data for a specific user
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: userId
+          schema:
+            type: string
+          required: true
+          description: User ID to fetch stats for
+      responses:
+        '200':
+          description: User stats retrieved
+        '400':
+          description: Missing userId
+        '401':
+          description: API key missing
+        '403':
+          description: Invalid API key
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
